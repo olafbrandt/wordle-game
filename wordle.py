@@ -1,12 +1,12 @@
-import string, re, random
+import re
+import random
+import string
+import time
 from collections import Counter
-from sys import prefix
-from xmlrpc.client import Boolean
 from colorama import Fore, Back, Style, init
 from enum import Enum
-import copy
-import math
-import time
+#from sys import prefix
+#from xmlrpc.client import Boolean
 
 init(autoreset=True)
 
@@ -18,6 +18,7 @@ class WCommand(Enum):
     NewWord = 'NewWord'
     Possibles = 'Possibles'
     Recommend = 'Recommend'
+    Auto = 'Auto'
     Quit = 'Quit'
 
 class WColor(Enum):
@@ -69,6 +70,8 @@ class Guess:
                 elif (guess == '4'):
                     self.cmd = WCommand.Recommend
                 elif (guess == '5'):
+                    self.cmd = WCommand.Auto
+                elif (guess == '6'):
                     self.cmd = WCommand.Quit
                 else:
                     print ('Guess must be 5 letters or a valid command.')
@@ -293,6 +296,7 @@ def read_words_file(filename:str):
 
 class Wordle:
     def __init__(self):
+        self.mode = None
         self.reset_state()
 
     def reset_state(self):
@@ -304,21 +308,6 @@ class Wordle:
         self.pw_counters = {}
         for w in self.possible_words:
             self.pw_counters[w] = Counter(w)
-    
-    def best_guesses_x(self, d: Descriptor, guess_count:int=5):
-        scores = Counter()
-        setmask = [(1,0)[len(s) <= 1] for s in d.sets]
-        for word_a in self.possible_words:
-            score = 0
-            orig_word_a = word_a
-            set_a = set([word_a[i] for i in range(5) if setmask[i]])
-            for word_b in self.remaining_words:
-                set_b = set([word_b[i] for i in range(5) if setmask[i]])
-                if (len(set_a.intersection(set_b)) > 0):
-                    score += 1
-            scores[orig_word_a] = score
-
-        return (scores.most_common(guess_count))
 
     def best_guesses(self, d: Descriptor, guess_count:int=5):
         scores = Counter()
@@ -390,39 +379,14 @@ class Wordle:
         #print ('{}\n{}\n{}'.format('=' * 80, scores, '=' * 80))
 
         is_remaing = True
-        recommendations = {x: scores[x] for x in d.remaining_words if x in scores and scores[x] <= min_of_max}
-        if (len(recommendations) == 0):
-            #print ('Remaining words are not best')
+        recs = {x: scores[x] for x in d.remaining_words if x in scores and scores[x] <= min_of_max}
+        if (len(recs) == 0):
             is_remaing = False
-            recommendations = {x: count for x, count in scores.items() if count <= min_of_max}
-        #print ('Recommendations: ',recommendations)
-        recommendations = recommendations.keys()
-        if (guess_count < len(recommendations)):
-            recommendations = random.sample(recommendations, guess_count)
-        return (min_of_max, list(recommendations), is_remaing)
-
-    def help(self):
-        print ('I am ready to help solve a wordle.')
-        count = 0
-        while True:
-            self.state.recalculate(self.pw_counters, False)
-
-            if False and count >= 0:
-                bg = self.best_guesses(self.state)
-                print ('recommend = {}'.format(bg))
-
-            lp = len(self.state.remaining_words)
-            print ('Remaining Wordles: {}'.format(len(self.state.remaining_words), ('')), end='')
-            print ('{}'.format('  '+(' '.join(self.state.remaining_words[0:7]),'')[lp > 8]))
-            if (lp <= 1):
-                print ("Wordle Found!")
-                break
-
-            count += 1
-            g = Guess()
-            g.collect_guess(count)
-            
-            self.state.update_descriptor(g)
+            recs = {x: count for x, count in scores.items() if count <= min_of_max}
+        recs = recs.keys()
+        if (guess_count < len(recs)):
+            recs = random.sample(recs, guess_count)
+        return (min_of_max, list(recs), is_remaing)
 
     def play(self):
         g = None
@@ -437,16 +401,25 @@ class Wordle:
 
             while True:                
                 while True:
-                    print ('{}'.format('-' * 20))
-                    print ('Commands: 1. Solve NYT, 2. New Word, 3. Possibilities, 4. Recommend, 5. Quit')
+                    if (self.mode != WCommand.Auto):
+                        print ('{}'.format('-' * 20))
+                        print ('Commands: 1. Web-Game, 2. New Word, 3. Possibilities, 4. Recommend, 5. Auto, 6. Quit')
 
                     for i in range(len(self.guesses)):
                         print ('Guess #{}:  {}'.format(i+1, self.guesses[i]))
 
-                    self.state.pprint_keyboard()
+                    if (self.mode != WCommand.Auto):
+                        self.state.pprint_keyboard()
 
                     g = Guess()
-                    g.collect_guess(count+1)
+                    if (self.mode == WCommand.Auto):
+                        if (count+1 == 1):
+                            g.guess = 'ARISE'
+                        else:
+                            (frw, words, ispw)  = self.best_guesses(self.state)
+                            g.guess = words[0]
+                    else:
+                        g.collect_guess(count+1)
                     if g.cmd is not None:
                         if (g.cmd == WCommand.Quit): break
                         if (g.cmd == WCommand.Possibles) or (g.cmd == WCommand.Recommend):
@@ -455,8 +428,9 @@ class Wordle:
                             print ('{}'.format('  '+(' '.join(self.state.remaining_words[0:7]),'')[lp > 8]))
                         
                         if (g.cmd == WCommand.Recommend):
-                            bg = self.best_guesses(self.state)
-                            print ('Recommend = {}'.format(bg))
+                            (frw, words, ispw)  = self.best_guesses(self.state)
+                            print ('Try one of these {}words: [{}]'.format(('','*possible* ')[ispw==1], ','.join(words)))
+                            print ('This will reduce the set of remaining possibilities to at most {} words.'.format(frw))
                             continue
                         
                         elif (g.cmd == WCommand.NewWord):
@@ -464,7 +438,16 @@ class Wordle:
                             count = 0
                             self.reset_state()
                             self.answer = random.choice(self.possible_words)
-                            print ('Picking a random wordle from {} possibilities.'.format(len(self.possible_words)))
+                            print ('OK. picking a random wordle from {} possibilities.'.format(len(self.possible_words)))
+                            continue
+
+                        elif (g.cmd == WCommand.Auto):
+                            self.answer = None
+                            count = 0
+                            self.reset_state()
+                            self.mode = WCommand.Auto
+                            self.answer = random.choice(self.possible_words)
+                            print ('Stand back. Entering full-auto mode.')
                             continue
 
                         elif (g.cmd == WCommand.HelpSolve):
@@ -492,12 +475,15 @@ class Wordle:
 
                 if (g.guess == self.answer):
 
-                    print ('{}'.format('=' * 20))
+                    print ('{}'.format('-' * 20))
                     for i in range(len(self.guesses)):
                         print ('Guess #{}:  {}'.format(i+1, self.guesses[i]))
-                    self.state.pprint_keyboard()
+                    if (self.mode != WCommand.Auto):    
+                        self.state.pprint_keyboard()
 
                     print ('Wordle {} found in {} guesses!'.format(g, count))
+                    if (count > 6):
+                        exit()
                     break
 
             if (g.cmd == WCommand.Quit): break
