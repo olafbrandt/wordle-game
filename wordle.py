@@ -33,7 +33,8 @@ def wcolorize(s='', template=''):
     cmap = {
         WColor.G.value: Fore.BLACK + Back.GREEN,
         WColor.Y.value: Fore.BLACK + Back.YELLOW,
-        WColor.B.value: Fore.WHITE + Back.BLACK }
+        WColor.B.value: Fore.WHITE + Back.BLACK,
+        WColor.X.value: Fore.BLACK + Back.WHITE}
     for i in range(min(len(s), len(template))):
         t = template[i].upper()
         if (t in cmap):
@@ -296,7 +297,9 @@ def read_words_file(filename:str):
 
 class Wordle:
     def __init__(self):
-        self.mode = None
+        self.auto_mode = False
+        self.hard_mode = False
+        self.stats = Counter()
         self.reset_state()
 
     def reset_state(self):
@@ -320,7 +323,12 @@ class Wordle:
 
         timers = [0] * 6
 
-        for word in self.possible_words:
+        if (self.hard_mode):
+            guess_words = d.remaining_words
+        else:
+            guess_words = self.possible_words
+
+        for word in guess_words:
             score = []
 
             g = Guess()
@@ -390,29 +398,38 @@ class Wordle:
 
     def play(self):
         g = None
+        pwi = iter(self.possible_words)
 
         while True:
 
             count = 0
             self.reset_state()
-            self.answer = random.choice(self.possible_words)
             print ('{}'.format('=' * 20))
-            print ('Picking a random wordle from {} possibilities.'.format(len(self.possible_words)))
+            if (self.auto_mode):
+                try:
+                    self.answer = next(pwi)
+                    print ('Selecting word {} in the list of {} words.'.format(sum(self.stats.values()), len(self.possible_words)))
+                except StopIteration:
+                    print ('Complete all words. Exiting.')
+                    exit()
+            else:
+                self.answer = random.choice(self.possible_words)
+                print ('Picking a random wordle from {} possibilities.'.format(len(self.possible_words)))
 
             while True:                
                 while True:
-                    if (self.mode != WCommand.Auto):
+                    if (not self.auto_mode):
                         print ('{}'.format('-' * 20))
                         print ('Commands: 1. Web-Game, 2. New Word, 3. Possibilities, 4. Recommend, 5. Auto, 6. Quit')
 
                     for i in range(len(self.guesses)):
                         print ('Guess #{}:  {}'.format(i+1, self.guesses[i]))
 
-                    if (self.mode != WCommand.Auto):
+                    if (not self.auto_mode):
                         self.state.pprint_keyboard()
 
                     g = Guess()
-                    if (self.mode == WCommand.Auto):
+                    if (self.auto_mode):
                         if (count+1 == 1):
                             g.guess = 'ARISE'
                         else:
@@ -445,8 +462,8 @@ class Wordle:
                             self.answer = None
                             count = 0
                             self.reset_state()
-                            self.mode = WCommand.Auto
-                            self.answer = random.choice(self.possible_words)
+                            self.auto_mode = True
+                            self.answer = next(pwi)
                             print ('Stand back. Entering full-auto mode.')
                             continue
 
@@ -478,12 +495,17 @@ class Wordle:
                     print ('{}'.format('-' * 20))
                     for i in range(len(self.guesses)):
                         print ('Guess #{}:  {}'.format(i+1, self.guesses[i]))
-                    if (self.mode != WCommand.Auto):    
+                    if (self.auto_mode):
+                        self.stats.update([count])
+                    else:
                         self.state.pprint_keyboard()
 
                     print ('Wordle {} found in {} guesses!'.format(g, count))
-                    if (count > 6):
-                        exit()
+                    if (self.auto_mode):
+                        print ('Summary solving stats: {}'.format(self.stats))
+                        if (not self.hard_mode and count > 6):
+                            print ('Auto failed to solve in 6 guesses.')
+                            exit()
                     break
 
             if (g.cmd == WCommand.Quit): break
