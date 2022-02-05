@@ -39,9 +39,9 @@ Enjoy!
 
 ----
 #### Now for some trivia (spolier alert!)
-- The provably best starting word is `ARISE` (or alternately its anagram `RAISE`.  With `ARISE`
+- The provably best starting word is `ARISE` (or alternately its anagram `RAISE`).  With `ARISE`
 as your first guess the maximum remaining solution set is 168 words. Next best letter
-combination is `ALONE` which gurantees a maximum |solution set size of
+combination is `ALONE` which gurantees a maximum solution set size of
 182 words.
 - The hardest words to solve are ones that have a large number of adjacent
 solutions.  Take `ROVER`which has 7 adjacent words that differ by one
