@@ -37,6 +37,8 @@ guesses. Where 12 words take 7 gueses and 3 take 8 guesses.
 
 Enjoy!
 
+{::options parse_block_html="true" /}  # Sets parse_block_html option to true
+
 <details>
 <summary markdown="span">Now for some trivia (spolier alert!)</summary>
 - The provably best starting word is `ARISE` (or alternately its anagram `RAISE`.  With `ARISE`
