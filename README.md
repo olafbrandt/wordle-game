@@ -36,7 +36,7 @@ use all known good letters in subsequent guesses) it will solve all wordles in u
 guesses. Where 12 words take 7 gueses and 3 take 8 guesses.
 
 Auto Solver Statistics:
-| Guess Count	| | Word Count  |   %     | |Hard Mode|   %   |
+| Guess Count. 	| |   Standard  |   %     | |Hard Mode|   %   |
 | :------------:|-| ----------: | ------: |-|--------:|------:|
 |        1	    | |     1       |    0.0% | |    1    |  0.0% |
 |        2      | |    64       |    2.8% | |  120    |  5.2% |
