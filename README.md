@@ -44,5 +44,5 @@ as your first guess the maximum remaining solution set is 168 words. Next best l
 combination is `ALONE` which gurantees a maximum |solution set size of
 182 words.
 - The hardest words to solve are ones that have a large number of adjacent
-solutions.  Take `ROVER`which has 7 |adjacent words that differ by one
+solutions.  Take `ROVER`which has 7 adjacent words that differ by one
 letter: `COVER, HOVER, LOVER, MOVER, RIVER, ROGER, ROWER`.
