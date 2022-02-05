@@ -35,6 +35,11 @@ and only one word requires 6 guesses. In hard-mode (per Internet this means you 
 use all known good letters in subsequent guesses) it will solve all wordles in up to 8
 guesses. Where 12 words take 7 gueses and 3 take 8 guesses.
 
+Auto Solver Statistics:
+| Guess Count	| Word Count	|   %     | |Hard Mode|   %   |
+| :---:       | ----------- | ------- |-|---------|-------|
+|        1	  |     1	      |    0.0% | |	1       |	0.0%  |
+
 Enjoy!
 
 ----
