@@ -37,22 +37,8 @@ guesses. Where 12 words take 7 gueses and 3 take 8 guesses.
 
 Enjoy!
 
-{::options parse_block_html="true" /}  # Sets parse_block_html option to true
-
-<details>
-<summary markdown="span">Now for some trivia (spolier alert!)</summary>
-- The provably best starting word is `ARISE` (or alternately its anagram `RAISE`.  With `ARISE`
-as your first guess the maximum remaining solution set is 168 words. Next best letter
-combination is `ALONE` which gurantees a maximum |solution set size of
-182 words.
-- The hardest words to solve are ones that have a large number of adjacent
-solutions.  Take `ROVER`which has 7 |adjacent words that differ by one
-letter: `COVER, HOVER, LOVER, MOVER, RIVER, ROGER, ROWER`.
-</details>
-
 ----
-<xxdetails>
-<xxsummary markdown="span">Now for some trivia (spolier alert!)</xxsummary>
+#### Now for some trivia (spolier alert!)
 - The provably best starting word is `ARISE` (or alternately its anagram `RAISE`.  With `ARISE`
 as your first guess the maximum remaining solution set is 168 words. Next best letter
 combination is `ALONE` which gurantees a maximum |solution set size of
@@ -60,4 +46,3 @@ combination is `ALONE` which gurantees a maximum |solution set size of
 - The hardest words to solve are ones that have a large number of adjacent
 solutions.  Take `ROVER`which has 7 |adjacent words that differ by one
 letter: `COVER, HOVER, LOVER, MOVER, RIVER, ROGER, ROWER`.
-</xxdetails>
