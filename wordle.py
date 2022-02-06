@@ -27,7 +27,7 @@ class WColor(Enum):
     Y = 'Y'
     G = 'G'
 
-def wcolorize(s='', template=''):
+def wcolorize(s:str='', template:str='') -> str:
     cnt = 0
     res = ''
     cmap = {
@@ -47,16 +47,76 @@ def wcolorize(s='', template=''):
 
 class Guess:
     def __init__(self):
-        self.guess = ''
-        self.colors = ''
+        self.guess = None
+        self.colors = None
+        self.input = None
         self.cmd = None
     
+    def help_msg(self) -> None:
+        print ('Commands: 1. Web-Game, 2. New Word, 3. Possibilities, 4. Recommend, 5. Auto, 6. Quit')
+        print ('Guess input must be 5 letters [A-Z].')
+        print ('Color input must be 5 colors [GYB]\{5\}.')
+
+    def collect_input(self, prompt:str, count:int, colorize:bool=True) -> None:
+        self.cmd  = None
+        if (count <= 6 or not colorize):
+            print(prompt.format(count), end='')
+        else:
+            print('{}{}{}'.format(Style.RESET_ALL + Style.BRIGHT + Fore.RED, prompt.format(count), Style.RESET_ALL), end='')
+        try:
+            self.input = input().strip().upper()
+        except EOFError:
+            print ('\nEOF')
+            self.cmd = WCommand.Quit
+        return (self.cmd)
+
+    def parse_input_cmds(self) -> bool:
+        if (self.input == '?'):
+            self.help_msg()
+        elif (self.input == 'Q'):
+            self.cmd = WCommand.Quit
+        elif (self.input == '1'):
+            self.cmd = WCommand.HelpSolve
+        elif (self.input == '2'):
+            self.cmd = WCommand.NewWord
+        elif (self.input == '3'):
+            self.cmd = WCommand.Possibles
+        elif (self.input == '4'):
+            self.cmd = WCommand.Recommend
+        elif (self.input == '5'):
+            self.cmd = WCommand.Auto
+        elif (self.input == '6'):
+            self.cmd = WCommand.Quit
+        return (self.cmd is not None)
+
+    def parse_guess(self, inp:str = None) -> bool:
+        self.guess = None
+        if (inp is None):
+            inp = self.input
+        if (re.match('^[A-Z]{5}$', inp)):
+            self.guess = inp
+            return True
+        return False
+
+    def parse_colors(self, inp:str = None) -> bool:
+        if (inp is None):
+            inp = self.input
+        if (re.match('^[GYB]{5}$', inp)):
+            self.colors = inp
+            return True
+        return False
+
     def collect_guess(self, count=1):
         self.cmd = None
         guess = None
         try:   
             while True:
-                print('#{} Guess:  '.format(count), end='')
+                color_on = Style.RESET_ALL + Style.BRIGHT + Fore.RED
+                color_off = Style.RESET_ALL
+                if (count <= 6):
+                    color_on = ''
+                    color_off = ''
+                print('{}#{} Guess:{}  '.format(color_on, count, color_off), end='')
                 guess = input().strip().upper()
                 if (re.match('^[A-Z]{5}$', guess)):
                     break
@@ -100,22 +160,22 @@ class Guess:
             print ('\nEOF')
             self.cmd = WCommand.Quit
 
-    def compute_colors(self, answer:str):
-        ans = list(answer)
-        colors = list('-' * len(ans))
-        for i in range(len(ans)):
-            if (self.guess[i] == ans[i]):
+    def compute_colors(self, guess:str, answer:str) -> None:
+        answer = list(answer)
+        colors = list('-' * 5)
+        for i, ch in enumerate(answer):
+            if (guess[i] == ch):
                 colors[i] = 'G'
-                ans[i] = '-'
+                answer[i] = '-'
 
-        for i in range(len(ans)):
+        for i, ch in enumerate(answer):
             if (colors[i] == '-'):
-                if (self.guess[i] in ans):
+                if (guess[i] in answer):
                     colors[i] = 'Y'
-                    ans[ans.index(self.guess[i])] = '-'
+                    answer[answer.index(guess[i])] = '-'
                 elif (colors[i] != 'G'):
                     colors[i] = 'B'
-        self.colors = colors
+        self.colors = ''.join(colors)
 
     def __str__(self):
         return (wcolorize(self.guess, self.colors))          
@@ -340,7 +400,7 @@ class Wordle:
                 t1 = time.time()
                 dd = self.state.copy()
                 t2 = time.time()
-                g.compute_colors(ans)
+                g.compute_colors(g.guess, ans)
                 t3 = time.time()
                 #print ('g={} ans={}'.format(g, ans))
                 dd.update_descriptor(g)
@@ -420,10 +480,15 @@ class Wordle:
                 while True:
                     if (not self.auto_mode):
                         print ('{}'.format('-' * 20))
-                        print ('Commands: 1. Web-Game, 2. New Word, 3. Possibilities, 4. Recommend, 5. Auto, 6. Quit')
+                        #print ('Commands: 1. Web-Game, 2. New Word, 3. Possibilities, 4. Recommend, 5. Auto, 6. Quit')
 
                     for i in range(len(self.guesses)):
-                        print ('Guess #{}:  {}'.format(i+1, self.guesses[i]))
+                        color_on = Style.RESET_ALL + Style.BRIGHT + Fore.RED
+                        color_off = Style.RESET_ALL
+                        if (i+1 <= 6):
+                            color_on = ''
+                            color_off = ''
+                        print ('{}Guess #{}:{}  {}'.format(color_on, i+1, color_off, self.guesses[i]))
 
                     if (not self.auto_mode):
                         self.state.pprint_keyboard()
@@ -436,7 +501,10 @@ class Wordle:
                             (frw, words, ispw)  = self.best_guesses(self.state)
                             g.guess = words[0]
                     else:
-                        g.collect_guess(count+1)
+                        g.collect_input('Guess  #{}:  ', count+1)
+                        if (not g.parse_input_cmds()):
+                            g.parse_guess()
+
                     if g.cmd is not None:
                         if (g.cmd == WCommand.Quit): break
                         if (g.cmd == WCommand.Possibles) or (g.cmd == WCommand.Recommend):
@@ -478,13 +546,15 @@ class Wordle:
 
                 if (g.cmd == WCommand.Quit): break
 
-                count += 1
                 if self.answer:
-                    g.compute_colors(self.answer)
+                    g.compute_colors(g.guess, self.answer)
                 else:
-                    g.collect_colors()
+                    g.collect_input('Colors #{}: ', count+1)
+                    if (not g.parse_input_cmds()):
+                        g.parse_colors()
                     if (g.cmd == WCommand.Quit): break
 
+                count += 1
                 self.state.update_descriptor(g)
                 self.guesses.append(g)
                 self.state.recalculate(self.pw_counters, False)
