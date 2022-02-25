@@ -142,23 +142,6 @@ class Guess:
             print ('\nEOF')
             self.cmd = WCommand.Quit
         self.guess = guess
-    
-    def collect_colors(self, count=1):
-        self.colors = None
-        try:
-            while True:
-                print('#{} Colors: '.format(count), end='')
-                colors = input().strip().upper()
-                if (re.match('^[GYB]{5}$', colors)):
-                    self.colors = colors
-                    break
-                if (colors == 'Q'):
-                    self.cmd = WCommand.Quit
-                    break
-                print ('Colors must be 5 colors (G, Y, B). Or \'Q\' to exit.')
-        except EOFError:
-            print ('\nEOF')
-            self.cmd = WCommand.Quit
 
     def compute_colors(self, guess:str, answer:str) -> None:
         answer = list(answer)
@@ -549,7 +532,7 @@ class Wordle:
                 if self.answer:
                     g.compute_colors(g.guess, self.answer)
                 else:
-                    g.collect_input('Colors #{}: ', count+1)
+                    g.collect_input('Colors #{}:  ', count+1)
                     if (not g.parse_input_cmds()):
                         g.parse_colors()
                     if (g.cmd == WCommand.Quit): break
