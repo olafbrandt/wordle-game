@@ -14,6 +14,7 @@ recalc_count = 0
 recalc_timers = [0.0] * 6
 
 class WCommand(Enum):
+    HelpMsg = 'HelpMsg'
     HelpSolve = 'HelpSolve'
     NewWord = 'NewWord'
     Possibles = 'Possibles'
@@ -55,7 +56,7 @@ class Guess:
     def help_msg(self) -> None:
         print ('Commands: 1. Web-Game, 2. New Word, 3. Possibilities, 4. Recommend, 5. Auto, 6. Quit')
         print ('Guess input must be 5 letters [A-Z].')
-        print ('Color input must be 5 colors [GYB]\{5\}.')
+        print ('Color input must be 5 colors [GYB]{5}.')
 
     def collect_input(self, prompt:str, count:int, colorize:bool=True) -> None:
         self.cmd  = None
@@ -72,7 +73,7 @@ class Guess:
 
     def parse_input_cmds(self) -> bool:
         if (self.input == '?'):
-            self.help_msg()
+            self.cmd = WCommand.HelpMsg
         elif (self.input == 'Q'):
             self.cmd = WCommand.Quit
         elif (self.input == '1'):
@@ -105,43 +106,6 @@ class Guess:
             self.colors = inp
             return True
         return False
-
-    def collect_guess(self, count=1):
-        self.cmd = None
-        guess = None
-        try:   
-            while True:
-                color_on = Style.RESET_ALL + Style.BRIGHT + Fore.RED
-                color_off = Style.RESET_ALL
-                if (count <= 6):
-                    color_on = ''
-                    color_off = ''
-                print('{}#{} Guess:{}  '.format(color_on, count, color_off), end='')
-                guess = input().strip().upper()
-                if (re.match('^[A-Z]{5}$', guess)):
-                    break
-                if (guess == 'Q'):
-                    self.cmd = WCommand.Quit
-                elif (guess == '1'):
-                    self.cmd = WCommand.HelpSolve
-                elif (guess == '2'):
-                    self.cmd = WCommand.NewWord
-                elif (guess == '3'):
-                    self.cmd = WCommand.Possibles
-                elif (guess == '4'):
-                    self.cmd = WCommand.Recommend
-                elif (guess == '5'):
-                    self.cmd = WCommand.Auto
-                elif (guess == '6'):
-                    self.cmd = WCommand.Quit
-                else:
-                    print ('Guess must be 5 letters or a valid command.')
-                    continue
-                break
-        except EOFError:
-            print ('\nEOF')
-            self.cmd = WCommand.Quit
-        self.guess = guess
 
     def compute_colors(self, guess:str, answer:str) -> None:
         answer = list(answer)
@@ -486,7 +450,8 @@ class Wordle:
                     else:
                         g.collect_input('Guess  #{}:  ', count+1)
                         if (not g.parse_input_cmds()):
-                            g.parse_guess()
+                            if (not g.parse_guess()):
+                                g.cmd = WCommand.HelpMsg
 
                     if g.cmd is not None:
                         if (g.cmd == WCommand.Quit): break
@@ -524,6 +489,11 @@ class Wordle:
                             self.reset_state()
                             print ('Ready to help you solve NYT Wordle.')
                             continue
+
+                        elif (g.cmd == WCommand.HelpMsg):
+                            g.help_msg()
+                            continue
+
                     else:
                         break
 
