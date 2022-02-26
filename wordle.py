@@ -504,7 +504,8 @@ class Wordle:
                 else:
                     g.collect_input('Colors #{}:  ', count+1)
                     if (not g.parse_input_cmds()):
-                        g.parse_colors()
+                        if (not g.parse_colors()):
+                            g.cmd = WCommand.HelpMsg
                     if (g.cmd == WCommand.Quit): break
 
                 count += 1
