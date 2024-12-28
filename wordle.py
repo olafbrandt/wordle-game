@@ -1,12 +1,19 @@
+"""Wordle Game
+
+Play something like the NYTimes Wordle, or help you solve it.
+"""
+import sys
 import re
 import random
 import string
 import time
 from collections import Counter
-from colorama import Fore, Back, Style, init
 from enum import Enum
-#from sys import prefix
-#from xmlrpc.client import Boolean
+try:
+    from colorama import Fore, Back, Style, init
+except ModuleNotFoundError:
+    print('colorama is not installed. Consider "pip install colorama" ...')
+    exit()
 
 init(autoreset=True)
 
@@ -35,7 +42,8 @@ def wcolorize(s:str='', template:str='') -> str:
         WColor.G.value: Fore.BLACK + Back.GREEN,
         WColor.Y.value: Fore.BLACK + Back.YELLOW,
         WColor.B.value: Fore.WHITE + Back.BLACK,
-        WColor.X.value: Fore.BLACK + Back.WHITE}
+        WColor.X.value: Fore.BLACK + Back.WHITE
+    }
     for i in range(min(len(s), len(template))):
         t = template[i].upper()
         if (t in cmap):
@@ -51,7 +59,7 @@ class Guess:
         self.guess = None
         self.colors = None
         self.input = None
-        self.cmd = None
+        self.cmd:WCommand = None
     
     def help_msg(self) -> None:
         print ('Commands: 1. Web-Game, 2. New Word, 3. Possibilities, 4. Recommend, 5. Auto, 6. Quit')
@@ -92,17 +100,17 @@ class Guess:
 
     def parse_guess(self, inp:str = None) -> bool:
         self.guess = None
-        if (inp is None):
+        if inp is None:
             inp = self.input
-        if (re.match('^[A-Z]{5}$', inp)):
+        if re.match('^[A-Z]{5}$', inp):
             self.guess = inp
             return True
         return False
 
     def parse_colors(self, inp:str = None) -> bool:
-        if (inp is None):
+        if inp is None:
             inp = self.input
-        if (re.match('^[GYB]{5}$', inp)):
+        if re.match('^[GYB]{5}$', inp):
             self.colors = inp
             return True
         return False
@@ -150,9 +158,9 @@ class Descriptor:
         regex = ''.join(['[' + ''.join(sorted(s)) + ']' for s in self.sets])
         ac = ' '.join([self.alpha_colors[c] for c in string.ascii_uppercase])
         print ('d.regex           {}'.format(regex))
-        print ('            {}'.format(' '.join(list(string.ascii_uppercase))))
-        print ('d.min_count       {}'.format(self.min_count))
-        print ('d.max_count       {}'.format(self.max_count))
+        print ('                  {}'.format(' '.join(list(string.ascii_uppercase))))
+        print ('d.min_count       {}'.format(' '.join(f'{k}-{v}' for k,v in self.min_count.items())))
+        print ('d.max_count       {}'.format(' '.join(f'{k}-{v}' for k,v in self.max_count.items())))
         #print ('d.min_count       {}'.format(' '.join([str(self.min_count[c]) for c in string.ascii_uppercase])))
         #print ('d.max_count       {}'.format(' '.join([str(self.max_count[c]) for c in string.ascii_uppercase])))
         print ('d.alpha_colors    {}'.format(wcolorize(' '.join(list(string.ascii_uppercase)), ac)))
@@ -171,60 +179,68 @@ class Descriptor:
         ac = ''.join([self.alpha_colors[c] for c in row])
         print ('  {}'.format(wcolorize(' '.join(list(row)), ' '.join(list(ac)))))
 
-    def update_descriptor (self, g:Guess, verbose:bool=False):
-        #verbose = True
+    def update_descriptor (self, g:Guess, verbose:bool = False):
+        verbose = True
         color_order = 'GYBX'
-        
-        pairs = list(zip(list(g.colors), list(g.guess)))
+
+        pairs = list(zip(g.colors, g.guess))
         sorted_pairs = sorted(pairs, key=lambda pair: pair[1]+str(color_order.index(pair[0])))
-        if verbose: print ('sorted_pairs={}'.format(list(sorted_pairs)))
+        if verbose:
+            print (f'sorted_pairs = {list(sorted_pairs)}')
         first_i = 0
         for i in range(5):
             pair = sorted_pairs[i]
-            if (color_order.index(pair[0]) < color_order.index(self.alpha_colors[pair[1]])):
+            if color_order.index(pair[0]) < color_order.index(self.alpha_colors[pair[1]]):
                 self.alpha_colors[pair[1]] = pair[0]
-            if (pair[1] != sorted_pairs[first_i][1]):
+            if pair[1] != sorted_pairs[first_i][1]:
                 first_i = i
-            if (pair[0] == WColor.B.value):
+            if pair[0] == WColor.B.value:
                 self.max_count[pair[1]] = min(self.max_count[pair[1]], i - first_i)
-                if verbose: print ('Max count of letter \'{}\' is {}'.format(pair[1], self.max_count[pair[1]]))
+                if verbose:
+                    print (f'Max count of letter "{pair[1]}" is {self.max_count[pair[1]]}')
             else:
                 self.min_count[pair[1]] = max(self.min_count[pair[1]], i - first_i + 1)
-                if verbose: print ('Min count of letter \'{}\' is {}'.format(pair[1], self.min_count[pair[1]]))
+                if verbose:
+                    print (f'Min count of letter "{pair[1]}" is {self.min_count[pair[1]]}')
         min_sum = sum(self.min_count.values())
         for c in string.ascii_uppercase:
             self.max_count[c] = min(self.max_count[c], 5 - min_sum + self.min_count[c])
 
-        if verbose: self.pprint('update decriptor')
-        if verbose: print ('guess={}'.format(g))
-        if verbose: print ('guess={}, pairs={}'.format(g.guess, pairs))
-        for i in range(len(pairs)):
-            pair = pairs[i]
-            if (pair[0] == 'B'):
-                if (len(re.findall(pair[1], g.guess)) <= 1):
-                    for j in range(len(self.sets)):
-                        self.sets[j] = self.sets[j] - set(pair[1])
-                    if verbose: print ('Letter \'{}\' removed from each position'.format(pair[1]))
+        if verbose:
+            self.pprint('update decriptor - PRE')
+            print (f'guess={g}')
+            print (f'guess={g.guess}, pairs={pairs}')
+        for i, (color, letter) in enumerate(pairs):
+            if color == 'B':
+                if g.guess.count(letter) <= 1:
+                    for s in self.sets:
+                        s -= set(letter)
+                    if verbose:
+                        print (f'Letter "{letter}" removed from each position')
                 else:
-                    if verbose: print ('Letter \'{}\' not removed because duplicate'.format(pair[1]))
-                    None
-            elif (pair[0] == 'G'):
-                self.sets[i] = set(pair[1])
-                if verbose: print ('All letters except \'{}\' removed from position {}'.format(pair[1], i))
-            elif (pair[0] == 'Y'):
-                self.sets[i] = self.sets[i] - set(pair[1])
-                if verbose: print ('Letter \'{}\' removed from position {}'.format(pair[1], i))
+                    if verbose:
+                        print (f'Letter "{letter}" not removed because duplicate')
+            elif color == 'G':
+                self.sets[i] = set(letter)
+                if verbose:
+                    print (f'All letters except "{letter}" removed from position {i}')
+            elif color == 'Y':
+                self.sets[i] = self.sets[i] - set(letter)
+                if verbose:
+                    print (f'Letter "{letter}" removed from position {i}')
+        if verbose:
+            self.pprint('decriptor updated - POST')
 
         for ch in string.ascii_uppercase:
-            if (self.max_count[ch] == 0):
+            if self.max_count[ch] == 0:
                 msg = False
                 for j in range(5):
-                    if (ch in self.sets[j]):
+                    if ch in self.sets[j]:
                         msg = True                        
                         self.sets[j] = self.sets[j] - set(ch)
                 if msg:
-                    if verbose: print ('Letter {} removed from each position. Because zero max count.'.format(ch))
-                    None
+                    if verbose:
+                        print (f'Letter {ch} removed from each position. Because zero max count.')
 
     def recalculate(self, pw_counters, verbose:bool=False):
 
@@ -454,16 +470,17 @@ class Wordle:
                                 g.cmd = WCommand.HelpMsg
 
                     if g.cmd is not None:
-                        if (g.cmd == WCommand.Quit): break
+                        if (g.cmd == WCommand.Quit):
+                            break
                         if (g.cmd == WCommand.Possibles) or (g.cmd == WCommand.Recommend):
                             lp = len(self.state.remaining_words)
-                            print ('Remaining Wordles: {}'.format(len(self.state.remaining_words), ('')), end='')
-                            print ('{}'.format('  '+(' '.join(self.state.remaining_words[0:7]),'')[lp > 8]))
+                            print (f'Remaining Wordles: {len(self.state.remaining_words)}', end='')
+                            print (f'{("  " + " ".join(self.state.remaining_words[0:7]), "")[lp > 8]}')
                         
                         if (g.cmd == WCommand.Recommend):
                             (frw, words, ispw)  = self.best_guesses(self.state)
-                            print ('Try one of these {}words: [{}]'.format(('','*possible* ')[ispw==1], ','.join(words)))
-                            print ('This will reduce the set of remaining possibilities to at most {} words.'.format(frw))
+                            print (f'Try one of these {("","*possible* ")[ispw==1]}words: [{','.join(words)}]')
+                            print (f'This will reduce the set of remaining possibilities to at most {frw} words.')
                             continue
                         
                         elif (g.cmd == WCommand.NewWord):
@@ -506,7 +523,8 @@ class Wordle:
                     if (not g.parse_input_cmds()):
                         if (not g.parse_colors()):
                             g.cmd = WCommand.HelpMsg
-                    if (g.cmd == WCommand.Quit): break
+                    if g.cmd == WCommand.Quit:
+                        break
 
                 count += 1
                 self.state.update_descriptor(g)
@@ -514,26 +532,31 @@ class Wordle:
                 self.state.recalculate(self.pw_counters, False)
 
 
-                if (g.guess == self.answer):
+                if g.guess == self.answer:
 
-                    print ('{}'.format('-' * 20))
-                    for i in range(len(self.guesses)):
-                        print ('Guess #{}:  {}'.format(i+1, self.guesses[i]))
-                    if (self.auto_mode):
+                    print ('-' * 20)
+                    for i,g in enumerate(self.guesses):
+                        print (f'Guess #{i+1}:  {g}')
+                    if self.auto_mode:
                         self.stats.update([count])
                     else:
                         self.state.pprint_keyboard()
 
-                    print ('Wordle {} found in {} guesses!'.format(g, count))
-                    if (self.auto_mode):
-                        print ('Summary solving stats: {}'.format(self.stats))
-                        if (not self.hard_mode and count > 6):
+                    print (f'Wordle {g} found in {count} guesses!')
+                    if self.auto_mode:
+                        print (f'Summary solving stats: {self.stats}')
+                        if not self.hard_mode and count > 6:
                             print ('Auto failed to solve in 6 guesses.')
                             exit()
                     break
 
-            if (g.cmd == WCommand.Quit): break
+            if g.cmd == WCommand.Quit:
+                break
         print ('Quitting')
 
-game = Wordle()
-game.play()
+def main(fname):
+    game = Wordle()
+    game.play()
+
+if __name__ == "__main__":
+    main(open(sys.argv[1], encoding="utf-8") if len(sys.argv) > 1 else sys.stdin)
