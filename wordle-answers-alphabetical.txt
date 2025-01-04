@@ -652,6 +652,7 @@ email
 embed
 ember
 emcee
+emoji
 empty
 enact
 endow
